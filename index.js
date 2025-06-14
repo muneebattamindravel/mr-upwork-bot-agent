@@ -8,48 +8,51 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+let botProcess = null;
 let botWindowPid = null;
-let batFilePath = path.join(__dirname, 'start-bot-temp.bat');
 const botDir = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper';
+const batFilePath = path.join(__dirname, 'start-bot-temp.bat');
 
 app.get('/status', (req, res) => {
-  const status = botWindowPid ? 'running' : 'stopped';
+  const status = botProcess ? 'running' : 'stopped';
   res.json({ status });
 });
 
 app.post('/start-bot', (req, res) => {
-  if (botWindowPid) {
+  if (botProcess) {
     return res.json({ message: 'Bot already running' });
   }
 
-  // Create a .bat file that runs npm start in the bot directory
   const batContent = `@echo off\ncd /d "${botDir}"\nnpm start\npause`;
   fs.writeFileSync(batFilePath, batContent);
 
-  // Spawn a new cmd window using the bat file
-  const child = spawn('cmd.exe', ['/c', 'start', '""', batFilePath], {
+  // Start a new cmd.exe window to run the .bat file
+  const child = spawn('cmd.exe', ['/c', 'start', '"bot-window"', batFilePath], {
     detached: true,
     shell: true,
   });
 
+  botProcess = child;
   botWindowPid = child.pid;
-  console.log('[✅ BOT STARTED]');
+
+  console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
   res.json({ message: 'Bot started' });
 });
 
 app.post('/stop-bot', (req, res) => {
   if (!botWindowPid) {
-    return res.json({ message: 'No bot process found' });
+    return res.status(400).json({ message: 'No running bot to stop' });
   }
 
-  // Try to close all cmd windows running the scraper by name (npm.exe or node.exe)
-  exec('taskkill /F /IM node.exe /T', (err, stdout, stderr) => {
+  // Kill window by title (works only if we named it in /start)
+  exec(`taskkill /FI "WINDOWTITLE eq bot-window*" /F`, (err, stdout, stderr) => {
     if (err) {
       console.error('Error stopping bot:', err.message);
       return res.status(500).json({ message: 'Failed to stop bot', error: err.message });
     }
 
     console.log('[🛑 BOT STOPPED]');
+    botProcess = null;
     botWindowPid = null;
     res.json({ message: 'Bot stopped' });
   });
