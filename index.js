@@ -29,9 +29,6 @@ app.post('/start-bot', (req, res) => {
 
   console.log('[🟡 BOT LAUNCHING...]');
 
-  // ✅ Respond immediately to client to avoid hang
-  
-
   // ⏳ In background, wait and detect the real PID
   setTimeout(() => {
     const wmicCommand = `wmic process where "CommandLine like '%${BOT_TITLE}%'" get ProcessId`;
@@ -57,7 +54,7 @@ app.post('/stop-bot', (req, res) => {
     return res.json({ message: 'Bot is not running' });
   }
 
-  const killCommand = `taskkill /PID ${botWindowPid} /T /F`;
+  const killCommand = `taskkill /PID ${botWindowPid} /F`;
 
   exec(killCommand, (err) => {
     if (err) {
