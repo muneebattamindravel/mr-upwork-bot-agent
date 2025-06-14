@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 let botWindowPid = null;
-const BOT_TITLE = 'UPWORK_SCRAPER_BOT_WINDOW';
+const BOT_TAG = '--bot-agent=ec2-micro-1';
 const BAT_PATH = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat';
 
 app.get('/status', (req, res) => {
@@ -19,17 +19,15 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running', pid: botWindowPid });
   }
 
-  // 🔄 Start bot in new CMD window
-  spawn('cmd.exe', ['/c', 'start', `"${BOT_TITLE}"`, 'cmd', '/k', BAT_PATH], {
+  spawn('cmd.exe', ['/c', 'start', '', 'cmd', '/k', BAT_PATH], {
     detached: true,
     shell: true,
   });
 
   console.log('[🟡 BOT LAUNCHING...]');
 
-  // ⏳ Detect the CMD process via WMIC after a short delay
   setTimeout(() => {
-    const wmicCommand = `wmic process where "CommandLine like '%${BOT_TITLE}%'" get ProcessId`;
+    const wmicCommand = `wmic process where "CommandLine like '%${BOT_TAG}%'" get ProcessId`;
 
     exec(wmicCommand, (err, stdout) => {
       if (err) {
@@ -47,7 +45,7 @@ app.post('/start-bot', (req, res) => {
         res.json({ message: '⚠️ Bot started, but PID not found' });
       }
     });
-  }, 2000);
+  }, 2500); // extra buffer to ensure CMD + Electron loads fully
 });
 
 app.post('/stop-bot', (req, res) => {
@@ -57,7 +55,7 @@ app.post('/stop-bot', (req, res) => {
 
   const killCommand = `taskkill /PID ${botWindowPid} /T /F`;
 
-  exec(killCommand, (err, stdout, stderr) => {
+  exec(killCommand, (err) => {
     if (err) {
       console.error('[❌ STOP ERROR]', err.message);
       return res.status(500).json({ message: 'Failed to stop bot', error: err.message });
