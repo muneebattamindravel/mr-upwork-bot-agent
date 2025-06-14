@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { exec } = require('child_process');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -18,10 +19,10 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running' });
   }
 
-  const workingDir = `"C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper"`;
-  const batCommand = `start "${BOT_WINDOW_TITLE}" cmd /k "cd /d ${workingDir} && npm start"`;
+  const batFilePath = `"C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-scraper.bat"`;
+  const command = `start "${BOT_WINDOW_TITLE}" cmd /k ${batFilePath}`;
 
-  exec(batCommand, (error) => {
+  exec(command, (error) => {
     if (error) {
       console.error('[❌ BOT START ERROR]', error.message);
       return res.status(500).json({ message: 'Failed to start bot', error: error.message });
@@ -35,14 +36,14 @@ app.post('/start-bot', (req, res) => {
 
 app.post('/stop-bot', (req, res) => {
   if (!botStarted) {
-    return res.json({ message: 'Bot not running' });
+    return res.json({ message: 'Bot is not running' });
   }
 
   const killCommand = `taskkill /FI "WINDOWTITLE eq ${BOT_WINDOW_TITLE}" /T /F`;
 
   exec(killCommand, (error, stdout, stderr) => {
     if (error) {
-      console.error('[❌ Failed to kill bot process]', error.message);
+      console.error('[❌ BOT STOP ERROR]', error.message);
       return res.status(500).json({ message: 'Failed to stop bot', error: error.message });
     }
 
