@@ -10,7 +10,8 @@ app.use(express.json());
 app.post('/start-bot', (req, res) => {
   if (botProcess) return res.status(400).send('Bot already running');
 
-  const botPath = 'C:\\path\\to\\your\\bot'; // ⬅️ UPDATE THIS PATH
+  const botPath = 'C:\Users\Administrator\Desktop\mr-upwork-bot-scrapper'; // ⬅️ UPDATE THIS PATH
+  //C:\Users\Administrator\Desktop\mr-upwork-bot-scrapper
 
   botProcess = exec('npm start', { cwd: botPath }, (err) => {
     console.log('[Bot] Process exited');
