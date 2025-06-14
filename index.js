@@ -10,6 +10,7 @@ app.use(express.json());
 
 let botProcess = null;
 let botWindowPid = null;
+
 const botDir = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper';
 const batFilePath = path.join(__dirname, 'start-bot-temp.bat');
 
@@ -23,13 +24,14 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running' });
   }
 
-  const batContent = `@echo off\ncd /d "${botDir}"\nnpm start\npause`;
+  // Write a temp .bat file that starts the bot
+  const batContent = `@echo off\ncd /d "${botDir}"\nnpm start\n`;
   fs.writeFileSync(batFilePath, batContent);
 
-  // Start a new cmd.exe window to run the .bat file
-  const child = spawn('cmd.exe', ['/c', 'start', '"bot-window"', batFilePath], {
-    detached: true,
+  // Open the .bat file in a new visible CMD window
+  const child = spawn('cmd.exe', ['/c', 'start', batFilePath], {
     shell: true,
+    detached: true,
   });
 
   botProcess = child;
@@ -41,13 +43,13 @@ app.post('/start-bot', (req, res) => {
 
 app.post('/stop-bot', (req, res) => {
   if (!botWindowPid) {
-    return res.status(400).json({ message: 'No running bot to stop' });
+    return res.status(400).json({ message: 'No bot process found to stop' });
   }
 
-  // Kill window by title (works only if we named it in /start)
-  exec(`taskkill /FI "WINDOWTITLE eq bot-window*" /F`, (err, stdout, stderr) => {
+  // Kill only the specific PID
+  exec(`taskkill /PID ${botWindowPid} /T /F`, (err, stdout, stderr) => {
     if (err) {
-      console.error('Error stopping bot:', err.message);
+      console.error('[❌ Failed to kill bot process]', err.message);
       return res.status(500).json({ message: 'Failed to stop bot', error: err.message });
     }
 
