@@ -30,7 +30,7 @@ app.post('/start-bot', (req, res) => {
   console.log('[🟡 BOT LAUNCHING...]');
 
   // ✅ Respond immediately to client to avoid hang
-  res.json({ message: 'Bot starting...' });
+  
 
   // ⏳ In background, wait and detect the real PID
   setTimeout(() => {
@@ -43,8 +43,10 @@ app.post('/start-bot', (req, res) => {
       if (match && match.length > 0) {
         botWindowPid = parseInt(match[0]);
         console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+        res.json({ message: `[✅ BOT STARTED] PID: ${botWindowPid}` });
       } else {
         console.warn('[⚠️ BOT STARTED but PID not found]');
+        res.json({ message: `[⚠️ BOT STARTED but PID not found]` });
       }
     });
   }, 2000); // Wait 2s for window to open
