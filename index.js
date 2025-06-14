@@ -1,54 +1,72 @@
 const express = require('express');
 const cors = require('cors');
 const { exec } = require('child_process');
-const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const WINDOW_TITLE = 'ScraperBotWindow';
-let botStarted = false;
+let botWindowPid = null;
+const BOT_TITLE = 'UPWORK_SCRAPER_BOT_WINDOW'; // must match the .bat
 
 app.get('/status', (req, res) => {
-  res.json({ status: botStarted ? 'running' : 'stopped' });
+  res.json({ status: botWindowPid ? 'running' : 'stopped', pid: botWindowPid });
 });
 
 app.post('/start-bot', (req, res) => {
-  if (botStarted) {
+  if (botWindowPid) {
     return res.json({ message: 'Bot already running' });
   }
 
-  const batFilePath = `"C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat"`;
-  const command = `start "${WINDOW_TITLE}" cmd /k ${batFilePath}`;
+  const batPath = `"C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat"`;
 
-  exec(command, (error) => {
-    if (error) {
-      console.error('[❌ START ERROR]', error.message);
-      return res.status(500).json({ message: 'Failed to start bot', error: error.message });
+  // Start the bot in a new CMD window
+  exec(`start "${BOT_TITLE}" cmd /k ${batPath}`, (err) => {
+    if (err) {
+      console.error('[❌ START ERROR]', err.message);
+      return res.status(500).json({ message: 'Failed to start bot', error: err.message });
     }
 
-    console.log('[✅ BOT STARTED]');
-    botStarted = true;
-    res.json({ message: 'Bot started successfully' });
+    // Wait 2 seconds to allow window to open
+    setTimeout(() => {
+      // Use WMIC to get the PID of the CMD with the matching title
+      const wmicCommand = `wmic process where "CommandLine like '%${BOT_TITLE}%'" get ProcessId`;
+
+      exec(wmicCommand, (err, stdout) => {
+        if (err) {
+          console.error('[❌ PID DETECTION FAILED]', err.message);
+          return res.status(500).json({ message: 'Bot started, but PID not found' });
+        }
+
+        const match = stdout.match(/(\d+)/g);
+        if (match && match.length > 0) {
+          botWindowPid = parseInt(match[0]);
+          console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+          res.json({ message: 'Bot started successfully', pid: botWindowPid });
+        } else {
+          console.warn('[⚠️ BOT STARTED but PID not detected]');
+          res.json({ message: 'Bot started, but PID not detected' });
+        }
+      });
+    }, 2000);
   });
 });
 
 app.post('/stop-bot', (req, res) => {
-  if (!botStarted) {
+  if (!botWindowPid) {
     return res.json({ message: 'Bot is not running' });
   }
 
-  const killCmd = `taskkill /FI "WINDOWTITLE eq ${WINDOW_TITLE}" /T /F`;
+  const killCommand = `taskkill /PID ${botWindowPid} /T /F`;
 
-  exec(killCmd, (error, stdout, stderr) => {
-    if (error) {
-      console.error('[❌ STOP ERROR]', error.message);
-      return res.status(500).json({ message: 'Failed to stop bot', error: error.message });
+  exec(killCommand, (err) => {
+    if (err) {
+      console.error('[❌ STOP ERROR]', err.message);
+      return res.status(500).json({ message: 'Failed to stop bot', error: err.message });
     }
 
-    console.log('[🛑 BOT STOPPED]');
-    botStarted = false;
+    console.log(`[🛑 BOT STOPPED] PID: ${botWindowPid}`);
+    botWindowPid = null;
     res.json({ message: 'Bot stopped successfully' });
   });
 });
