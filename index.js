@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { spawn, exec } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
@@ -19,18 +20,19 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running' });
   }
 
-  const botPath = `"C:\\Program Files\\nodejs\\node.exe"`; // wrap in quotes
-  const scriptPath = `"C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\index.js"`; // wrap in quotes
+  const batFilePath = path.join(__dirname, 'start-bot-temp.bat');
+  const nodePath = 'C:\\Program Files\\nodejs\\node.exe';
+  const scriptPath = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\index.js';
 
-  // ✅ Start a new CMD window that stays open with bot logs
-  const child = spawn(
-    'cmd.exe',
-    ['/c', 'start', '""', 'cmd', '/k', `${botPath} ${scriptPath}`],
-    {
-      detached: true,
-      shell: true
-    }
-  );
+  // ✅ Write temporary bat file
+  const batContent = `@echo off\n"${nodePath}" "${scriptPath}"\npause`;
+  fs.writeFileSync(batFilePath, batContent);
+
+  // ✅ Launch new window with bat file
+  const child = spawn('cmd.exe', ['/c', 'start', '""', batFilePath], {
+    detached: true,
+    shell: true
+  });
 
   botWindowPid = child.pid;
 
