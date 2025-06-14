@@ -18,38 +18,36 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running' });
   }
 
-  const batPath = `"C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat"`;
+  const batPath = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat';
+  const BOT_TITLE = 'UPWORK_SCRAPER_BOT_WINDOW';
 
-  // Start the bot in a new CMD window
-  exec(`start "${BOT_TITLE}" cmd /k ${batPath}`, (err) => {
-    if (err) {
-      console.error('[❌ START ERROR]', err.message);
-      return res.status(500).json({ message: 'Failed to start bot', error: err.message });
-    }
-
-    // Wait 2 seconds to allow window to open
-    setTimeout(() => {
-      // Use WMIC to get the PID of the CMD with the matching title
-      const wmicCommand = `wmic process where "CommandLine like '%${BOT_TITLE}%'" get ProcessId`;
-
-      exec(wmicCommand, (err, stdout) => {
-        if (err) {
-          console.error('[❌ PID DETECTION FAILED]', err.message);
-          return res.status(500).json({ message: 'Bot started, but PID not found' });
-        }
-
-        const match = stdout.match(/(\d+)/g);
-        if (match && match.length > 0) {
-          botWindowPid = parseInt(match[0]);
-          console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
-          res.json({ message: 'Bot started successfully', pid: botWindowPid });
-        } else {
-          console.warn('[⚠️ BOT STARTED but PID not detected]');
-          res.json({ message: 'Bot started, but PID not detected' });
-        }
-      });
-    }, 2000);
+  // 🔄 Start bot in a new CMD window via spawn (non-blocking)
+  spawn('cmd.exe', ['/c', 'start', `"${BOT_TITLE}"`, 'cmd', '/k', batPath], {
+    detached: true,
+    shell: true,
   });
+
+  console.log('[🟡 BOT LAUNCHING...]');
+
+  // ✅ Respond immediately to client to avoid hang
+  res.json({ message: 'Bot starting...' });
+
+  // ⏳ In background, wait and detect the real PID
+  setTimeout(() => {
+    const wmicCommand = `wmic process where "CommandLine like '%${BOT_TITLE}%'" get ProcessId`;
+
+    exec(wmicCommand, (err, stdout) => {
+      if (err) return console.error('[❌ PID DETECTION FAILED]', err.message);
+
+      const match = stdout.match(/(\d+)/g);
+      if (match && match.length > 0) {
+        botWindowPid = parseInt(match[0]);
+        console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+      } else {
+        console.warn('[⚠️ BOT STARTED but PID not found]');
+      }
+    });
+  }, 2000); // Wait 2s for window to open
 });
 
 app.post('/stop-bot', (req, res) => {
