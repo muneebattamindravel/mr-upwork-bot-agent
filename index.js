@@ -1,14 +1,29 @@
 const express = require('express');
 const cors = require('cors');
 const { spawn, exec } = require('child_process');
+const path = require('path');
+const dotenv = require('dotenv');
+
+// ✅ Load .env from scraper folder
+dotenv.config({
+  path: path.join('C:', 'Users', 'Administrator', 'Desktop', 'mr-upwork-bot-scrapper', '.env'),
+});
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 let botWindowPid = null;
-const BOT_TAG = '--bot-agent=ec2-micro-1';
+
+const BOT_ID = process.env.BOT_ID;
 const BAT_PATH = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat';
+
+if (!BOT_ID) {
+  console.error('❌ BOT_ID not found in .env. Exiting...');
+  process.exit(1);
+}
+
+console.log(`🤖 Loaded BOT_ID: ${BOT_ID}`);
 
 app.get('/status', (req, res) => {
   res.json({ status: botWindowPid ? 'running' : 'stopped', pid: botWindowPid });
@@ -27,7 +42,7 @@ app.post('/start-bot', (req, res) => {
   console.log('[🟡 BOT LAUNCHING...]');
 
   setTimeout(() => {
-    const wmicCommand = `wmic process where "CommandLine like '%${BOT_TAG}%'" get ProcessId`;
+    const wmicCommand = `wmic process where "CommandLine like '%BOT_ID=${BOT_ID}%'" get ProcessId`;
 
     exec(wmicCommand, (err, stdout) => {
       if (err) {
@@ -45,7 +60,7 @@ app.post('/start-bot', (req, res) => {
         res.json({ message: '⚠️ Bot started, but PID not found' });
       }
     });
-  }, 2500); // extra buffer to ensure CMD + Electron loads fully
+  }, 2500);
 });
 
 app.post('/stop-bot', (req, res) => {
